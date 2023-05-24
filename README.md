@@ -15,3 +15,9 @@
 # Design Process
 The goal of this project is to use what I have to create something. I do not currently have any DC motors, so I chose to use steppers that I have had for a while. I have a Jetson Nano from a while ago, so I chose to use that. 
 The only part I ordered for this was the motor controller, as I do not currently own any. The vehicle has a unique design where I chose to 3D print ball bearings and use them as wheels. The code uses OpenCV's HOG to detect me, and then KCF to track me.
+
+# TODO
+- Set up SSH to Jetson Nano
+- Finish printing all parts
+- Assemble
+- Test
