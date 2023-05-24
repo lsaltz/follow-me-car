@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 import glob
+import RPi.GPIO as GPIO
+import time
+from HR8825 import HR8825
 
 hog = cv2.HOGDescriptor()
 hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
@@ -8,6 +11,11 @@ cv2.startWindowThread()
 cap = cv2.VideoCapture(0)
 coordXList = []
 areaList = []
+
+Motor1 = HR8825(dir_pin=13, step_pin=19, enable_pin=12, mode_pins=(16, 17, 20))
+Motor2 = HR8825(dir_pin=24, step_pin=18, enable_pin=4, mode_pins=(21, 22, 27))
+Motor1.SetMicroStep('hardward','fullstep')
+Motor2.SetMicroStep('hardward' ,'fullstep') 
 
 def personDetect():
 	global cap
@@ -32,9 +40,13 @@ def personDetect():
 
 		if len(boxes) == 1:
 			print("I can see!")
+			Motor1.Stop()
+			Motor2.Stop()
 			break
 		else:
-			print("nothng there")		
+			print("nothng there")
+			Motor1.Stop()
+			Motor2.Stop()		
 	return xA, yA, w, h
 
 def tracking(d):
@@ -59,30 +71,44 @@ def tracking(d):
 				if coordXList[0] > coordXList[1]:
 					coordXList.pop(1)
 					print("going right")
-					
+					Motor1.TurnStep(Dir='backward', steps=100, stepdelay=0)	
+					Motor2.TurnStep(Dir='forward', steps=100, stepdelay=0)					
+					time.sleep(0.5)
 				elif coordXList[0] < coordXList[1]:
 					coordXList.pop(1)
 					print("going left")
-							
+					Motor1.TurnStep(Dir='forward', steps=100, stepdelay=0)	
+					Motor2.TurnStep(Dir='backward', steps=100, stepdelay=0)
+					time.sleep(0.5)							
 				else:
 					coordXList.pop(1)
 					print("im good where i am")
-		
-
+					Motor1.Stop()
+					Motor2.Stop()
+					time.sleep(0.5)
 			if len(areaList) > 1:
 				if areaList[0] > areaList[1]:
 					areaList.pop(1)
 					print("backing up")
-
+					Motor2.TurnStep(Dir='backward', steps=100, stepdelay=0)
+					Motor1.TurnStep(Dir='backward', steps=100, stepdelay=0)
+					time.sleep(0.5)
 				elif areaList[0] < areaList[1]:
 					areaList.pop(1)
+
 					print("going forward")
-			
+					Motor2.TurnStep(Dir='forward', steps=100, stepdelay=0)
+					Motor1.TurnStep(Dir='forward', steps=100, stepdelay=0)
+					time.sleep(0.5)			
 				else:
 					areaList.pop(1)
 					print("im good where i am")
-
+					Motor1.Stop()
+					Motor2.Stop()
+				
 			if cv2.waitKey(1) & 0xFF == ord('q'):
+				Motor1.Stop()
+				Motor2.Stop()
 				break
 		else:
 			d = personDetect()
