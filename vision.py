@@ -10,9 +10,9 @@ hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 cv2.startWindowThread()
 cap = cv2.VideoCapture(0)
 coordXList = []
-areaList = []
+yList = []
 
-Motor1 = HR8825(dir_pin=13, step_pin=19, enable_pin=12, mode_pins=(16, 17, 20))
+Motor1 = HR8825(dir_pin=13, step_pin=19, enable_pin=12, mode_pins=(16, 17, 5))
 Motor2 = HR8825(dir_pin=24, step_pin=18, enable_pin=4, mode_pins=(21, 22, 27))
 Motor1.SetMicroStep('hardward','fullstep')
 Motor2.SetMicroStep('hardward' ,'fullstep') 
@@ -29,12 +29,10 @@ def personDetect():
 		boxes, weights = hog.detectMultiScale(frame, winStride=(8,8) )
 		boxes = np.array([[x, y, x + w, y + h] for (x, y, w, h) in boxes])
 		for (xA, yA, xB, yB) in boxes:
-			cv2.rectangle(frame, (xA, yA), (xB, yB), (255, 0, 0), 2)
-			coordXList.append(xA)
+			cv2.rectangle(frame, (xA, yA), (xB, yB), (105, 0, 0), 2)
 			h = abs(xA - xB)
 			w = abs(yB - yA)
-			area0 = w * h
-			areaList.append(area0)
+			yList.append(yA)
 
 		cv2.imshow('frame', resize)
 
@@ -61,51 +59,63 @@ def tracking(d):
 
 		if ok:
 			(x, y, w, h) = [int(v) for v in d]	
-			cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
+			cv2.rectangle(img, (x, y), (x+w, y+h), (105, 0, 0), 2)
 			resize = cv2.resize(img, (1280, 720), interpolation=cv2.INTER_NEAREST)
 			cv2.imshow('tracker', resize)
-			coordXList.append(x)
-			area = w * h
-			areaList.append(area)
-			if len(coordXList) > 1:
-				if coordXList[0] > coordXList[1]:
-					coordXList.pop(1)
-					print("going right")
-					Motor1.TurnStep(Dir='backward', steps=100, stepdelay=0)	
-					Motor2.TurnStep(Dir='forward', steps=100, stepdelay=0)					
-					time.sleep(0.5)
-				elif coordXList[0] < coordXList[1]:
-					coordXList.pop(1)
-					print("going left")
-					Motor1.TurnStep(Dir='forward', steps=100, stepdelay=0)	
-					Motor2.TurnStep(Dir='backward', steps=100, stepdelay=0)
-					time.sleep(0.5)							
-				else:
-					coordXList.pop(1)
-					print("im good where i am")
-					Motor1.Stop()
-					Motor2.Stop()
-					time.sleep(0.5)
-			if len(areaList) > 1:
-				if areaList[0] > areaList[1]:
-					areaList.pop(1)
+			cent = (x + (x+w)) / 2
+			coordXList.append(cent)
+			print(cent)
+			yList.append(y)
+			
+			if len(yList) > 1:
+				if yList[0] > yList[1]-5:
+					yList.pop(1)
 					print("backing up")
-					Motor2.TurnStep(Dir='backward', steps=100, stepdelay=0)
-					Motor1.TurnStep(Dir='backward', steps=100, stepdelay=0)
-					time.sleep(0.5)
-				elif areaList[0] < areaList[1]:
-					areaList.pop(1)
+					Motor1.TurnStep(Dir='backward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)
+					Motor2.TurnStep(Dir='backward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)
 
+					
+				elif yList[0] < yList[1]+5:
+					yList.pop(1)
+					Motor1.TurnStep(Dir='forward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)
 					print("going forward")
-					Motor2.TurnStep(Dir='forward', steps=100, stepdelay=0)
-					Motor1.TurnStep(Dir='forward', steps=100, stepdelay=0)
-					time.sleep(0.5)			
+					Motor2.TurnStep(Dir='forward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)
+
+								
 				else:
-					areaList.pop(1)
+					yList.pop(1)
 					print("im good where i am")
 					Motor1.Stop()
 					Motor2.Stop()
-				
+			
+
+			if len(coordXList) > 0:
+				if coordXList[0] > 340:
+					coordXList.pop(0)
+					print("going right")
+					Motor1.TurnStep(Dir='backward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)	
+					Motor2.TurnStep(Dir='forward', steps=10, stepdelay=0.005)					
+					time.sleep(0.005)
+					
+				elif coordXList[0] < 300:
+					coordXList.pop(0)
+					print("going left")
+					Motor1.TurnStep(Dir='forward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)	
+					Motor2.TurnStep(Dir='backward', steps=10, stepdelay=0.005)
+					time.sleep(0.005)
+												
+				else:
+					coordXList.pop(0)
+					print("im good where i am")
+					Motor1.Stop()
+					Motor2.Stop()		
+			
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				Motor1.Stop()
 				Motor2.Stop()
@@ -115,11 +125,10 @@ def tracking(d):
 			tracking(d)
 
 
-
-while True:
-	cv2.waitKey(1)
+while cv2.waitKey(1) & 0xFF != ord('q'):
 	d = personDetect()
 	tracking(d)
-	
+Motor1.Stop()
+Motor2.Stop()	
 cap.release()
 cv2.destroyAllWindows()
